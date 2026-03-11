@@ -6,12 +6,56 @@ using TMPro;
 
 public class SettingsMenu : MonoBehaviour
 {
+    // ══════════════════════════════════════════════════════════════════════
+    //  ЧУВСТВИТЕЛЬНОСТЬ МЫШИ
+    // ══════════════════════════════════════════════════════════════════════
     [Header("Чувствительность мыши")]
     public Scrollbar sensitivityScrollbar;
     public TextMeshProUGUI sensitivityValueText;
     public float minSensitivity = 0.1f;
     public float maxSensitivity = 10f;
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  ЗВУК — МУЗЫКА
+    // ══════════════════════════════════════════════════════════════════════
+    [Header("Звук — Музыка")]
+    [Tooltip("Слайдер громкости музыки (0–1)")]
+    public Slider musicVolumeSlider;
+    [Tooltip("Текст с текущим значением (опционально)")]
+    public TextMeshProUGUI musicVolumeText;
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  ЗВУК — SFX
+    // ══════════════════════════════════════════════════════════════════════
+    [Header("Звук — SFX")]
+    [Tooltip("Слайдер громкости звуковых эффектов (0–1)")]
+    public Slider sfxVolumeSlider;
+    [Tooltip("Текст с текущим значением (опционально)")]
+    public TextMeshProUGUI sfxVolumeText;
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  ЗВУК — UI
+    // ══════════════════════════════════════════════════════════════════════
+    [Header("Звук — UI")]
+    [Tooltip("Слайдер громкости звуков интерфейса (0–1)")]
+    public Slider uiVolumeSlider;
+    [Tooltip("Текст с текущим значением (опционально)")]
+    public TextMeshProUGUI uiVolumeText;
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  VFX
+    // ══════════════════════════════════════════════════════════════════════
+    [Header("VFX")]
+    [Tooltip("Toggle: включить/выключить VFX (частицы)")]
+    public Toggle vfxToggle;
+    [Tooltip("Toggle: включить/выключить Post Processing")]
+    public Toggle postProcessToggle;
+    [Tooltip("Dropdown: качество теней  0=Выкл  1=Hard  2=Всё")]
+    public TMP_Dropdown shadowQualityDropdown;
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  КЛАВИШИ
+    // ══════════════════════════════════════════════════════════════════════
     [Header("Кнопка паузы")]
     public TextMeshProUGUI pauseKeyText;
     public Button pauseKeyButton;
@@ -82,8 +126,119 @@ public class SettingsMenu : MonoBehaviour
             sensitivityScrollbar.onValueChanged.AddListener(OnSensitivityChanged);
         }
 
+        InitAudioSliders();
+        InitVFXControls();
         UpdateAllKeyTexts();
         UpdateSensitivityText(savedSens);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  ИНИЦИАЛИЗАЦИЯ АУДИО
+    // ══════════════════════════════════════════════════════════════════════
+
+    void InitAudioSliders()
+    {
+        if (AudioManager.Instance == null) return;
+
+        if (musicVolumeSlider != null)
+        {
+            musicVolumeSlider.minValue = 0f;
+            musicVolumeSlider.maxValue = 1f;
+            musicVolumeSlider.value    = AudioManager.Instance.MusicVolume;
+            musicVolumeSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
+            UpdateVolumeText(musicVolumeText, AudioManager.Instance.MusicVolume);
+        }
+
+        if (sfxVolumeSlider != null)
+        {
+            sfxVolumeSlider.minValue = 0f;
+            sfxVolumeSlider.maxValue = 1f;
+            sfxVolumeSlider.value    = AudioManager.Instance.SFXVolume;
+            sfxVolumeSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+            UpdateVolumeText(sfxVolumeText, AudioManager.Instance.SFXVolume);
+        }
+
+        if (uiVolumeSlider != null)
+        {
+            uiVolumeSlider.minValue = 0f;
+            uiVolumeSlider.maxValue = 1f;
+            uiVolumeSlider.value    = AudioManager.Instance.UIVolume;
+            uiVolumeSlider.onValueChanged.AddListener(OnUIVolumeChanged);
+            UpdateVolumeText(uiVolumeText, AudioManager.Instance.UIVolume);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  ИНИЦИАЛИЗАЦИЯ VFX
+    // ══════════════════════════════════════════════════════════════════════
+
+    void InitVFXControls()
+    {
+        if (VFXManager.Instance == null) return;
+
+        if (vfxToggle != null)
+        {
+            vfxToggle.isOn = VFXManager.Instance.VFXEnabled;
+            vfxToggle.onValueChanged.AddListener(OnVFXToggleChanged);
+        }
+
+        if (postProcessToggle != null)
+        {
+            postProcessToggle.isOn = VFXManager.Instance.PostProcessingEnabled;
+            postProcessToggle.onValueChanged.AddListener(OnPostProcessToggleChanged);
+        }
+
+        if (shadowQualityDropdown != null)
+        {
+            shadowQualityDropdown.value = VFXManager.Instance.ShadowQualityLevel;
+            shadowQualityDropdown.onValueChanged.AddListener(OnShadowQualityChanged);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  CALLBACKS — АУДИО
+    // ══════════════════════════════════════════════════════════════════════
+
+    void OnMusicVolumeChanged(float value)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.MusicVolume = value;
+        UpdateVolumeText(musicVolumeText, value);
+    }
+
+    void OnSFXVolumeChanged(float value)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.SFXVolume = value;
+        UpdateVolumeText(sfxVolumeText, value);
+    }
+
+    void OnUIVolumeChanged(float value)
+    {
+        if (AudioManager.Instance != null) AudioManager.Instance.UIVolume = value;
+        UpdateVolumeText(uiVolumeText, value);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  CALLBACKS — VFX
+    // ══════════════════════════════════════════════════════════════════════
+
+    void OnVFXToggleChanged(bool value)
+    {
+        if (VFXManager.Instance != null) VFXManager.Instance.VFXEnabled = value;
+    }
+
+    void OnPostProcessToggleChanged(bool value)
+    {
+        if (VFXManager.Instance != null) VFXManager.Instance.PostProcessingEnabled = value;
+    }
+
+    void OnShadowQualityChanged(int value)
+    {
+        if (VFXManager.Instance != null) VFXManager.Instance.ShadowQualityLevel = value;
+    }
+
+    static void UpdateVolumeText(TextMeshProUGUI label, float value)
+    {
+        if (label != null) label.text = Mathf.RoundToInt(value * 100) + "%";
     }
 
     void Update()

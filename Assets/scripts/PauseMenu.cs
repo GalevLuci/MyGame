@@ -45,6 +45,10 @@ public class PauseMenu : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         isPaused = true;
+
+        // Звук открытия паузы
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayPauseOpen();
     }
 
     public void ResumeGame()
@@ -55,22 +59,38 @@ public class PauseMenu : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         isPaused = false;
+
+        // Звук закрытия паузы
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayPauseClose();
     }
 
     public void OpenSettings()
     {
         pauseCanvas.SetActive(false);
         settingsCanvas.SetActive(true);
+
+        // Звук нажатия кнопки
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayButtonClick();
     }
 
     public void CloseSettings()
     {
         settingsCanvas.SetActive(false);
         pauseCanvas.SetActive(true);
+
+        // Звук нажатия кнопки
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayButtonClick();
     }
 
     public void GoToMainMenu()
     {
+        // Звук нажатия кнопки перед переходом в меню
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayButtonClick();
+
         Time.timeScale = 1f;
         SceneManager.LoadScene(menuSceneName);
     }
