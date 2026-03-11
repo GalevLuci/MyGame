@@ -1,0 +1,67 @@
+# --- Временные файлы Unity ---
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+/Assets/AssetStoreTools*
+
+# --- Кэш Unity (автогенерируемые) ---
+/Assets/Plugins/Editor/JetBrains*
+SourceGenerated/
+.unitycloudbuild.yml
+
+# --- Visual Studio / VS Code ---
+.vs/
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+.vscode/
+
+# --- JetBrains Rider ---
+.idea/
+*.sln.iml
+
+# --- Файлы ОС ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Сборки и артефакты ---
+sysinfo.txt
+*.apk
+*.aab
+*.ipa
+*.unitypackage
+*.bundle
+*.exe
+*.x86
+*.x86_64
+*.app
+
+# --- UserSettings (личные настройки редактора) ---
+UserSettings/
+
+# --- Crashlytics ---
+crashlytics-build.properties
+fabric.properties
