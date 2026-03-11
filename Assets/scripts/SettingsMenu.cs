@@ -19,8 +19,8 @@ public class SettingsMenu : MonoBehaviour
     //  ЗВУК — МУЗЫКА
     // ══════════════════════════════════════════════════════════════════════
     [Header("Звук — Музыка")]
-    [Tooltip("Слайдер громкости музыки (0–1)")]
-    public Slider musicVolumeSlider;
+    [Tooltip("Scrollbar громкости музыки (value 0–1)")]
+    public Scrollbar musicVolumeScrollbar;
     [Tooltip("Текст с текущим значением (опционально)")]
     public TextMeshProUGUI musicVolumeText;
 
@@ -28,8 +28,8 @@ public class SettingsMenu : MonoBehaviour
     //  ЗВУК — SFX
     // ══════════════════════════════════════════════════════════════════════
     [Header("Звук — SFX")]
-    [Tooltip("Слайдер громкости звуковых эффектов (0–1)")]
-    public Slider sfxVolumeSlider;
+    [Tooltip("Scrollbar громкости звуковых эффектов (value 0–1)")]
+    public Scrollbar sfxVolumeScrollbar;
     [Tooltip("Текст с текущим значением (опционально)")]
     public TextMeshProUGUI sfxVolumeText;
 
@@ -37,8 +37,8 @@ public class SettingsMenu : MonoBehaviour
     //  ЗВУК — UI
     // ══════════════════════════════════════════════════════════════════════
     [Header("Звук — UI")]
-    [Tooltip("Слайдер громкости звуков интерфейса (0–1)")]
-    public Slider uiVolumeSlider;
+    [Tooltip("Scrollbar громкости звуков интерфейса (value 0–1)")]
+    public Scrollbar uiVolumeScrollbar;
     [Tooltip("Текст с текущим значением (опционально)")]
     public TextMeshProUGUI uiVolumeText;
 
@@ -140,30 +140,24 @@ public class SettingsMenu : MonoBehaviour
     {
         if (AudioManager.Instance == null) return;
 
-        if (musicVolumeSlider != null)
+        if (musicVolumeScrollbar != null)
         {
-            musicVolumeSlider.minValue = 0f;
-            musicVolumeSlider.maxValue = 1f;
-            musicVolumeSlider.value    = AudioManager.Instance.MusicVolume;
-            musicVolumeSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
+            musicVolumeScrollbar.value = AudioManager.Instance.MusicVolume;
+            musicVolumeScrollbar.onValueChanged.AddListener(OnMusicVolumeChanged);
             UpdateVolumeText(musicVolumeText, AudioManager.Instance.MusicVolume);
         }
 
-        if (sfxVolumeSlider != null)
+        if (sfxVolumeScrollbar != null)
         {
-            sfxVolumeSlider.minValue = 0f;
-            sfxVolumeSlider.maxValue = 1f;
-            sfxVolumeSlider.value    = AudioManager.Instance.SFXVolume;
-            sfxVolumeSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+            sfxVolumeScrollbar.value = AudioManager.Instance.SFXVolume;
+            sfxVolumeScrollbar.onValueChanged.AddListener(OnSFXVolumeChanged);
             UpdateVolumeText(sfxVolumeText, AudioManager.Instance.SFXVolume);
         }
 
-        if (uiVolumeSlider != null)
+        if (uiVolumeScrollbar != null)
         {
-            uiVolumeSlider.minValue = 0f;
-            uiVolumeSlider.maxValue = 1f;
-            uiVolumeSlider.value    = AudioManager.Instance.UIVolume;
-            uiVolumeSlider.onValueChanged.AddListener(OnUIVolumeChanged);
+            uiVolumeScrollbar.value = AudioManager.Instance.UIVolume;
+            uiVolumeScrollbar.onValueChanged.AddListener(OnUIVolumeChanged);
             UpdateVolumeText(uiVolumeText, AudioManager.Instance.UIVolume);
         }
     }
@@ -199,6 +193,7 @@ public class SettingsMenu : MonoBehaviour
     //  CALLBACKS — АУДИО
     // ══════════════════════════════════════════════════════════════════════
 
+    // Scrollbar.value уже 0–1, передаём напрямую в AudioManager
     void OnMusicVolumeChanged(float value)
     {
         if (AudioManager.Instance != null) AudioManager.Instance.MusicVolume = value;
