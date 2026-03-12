@@ -27,6 +27,15 @@ public class PlayerController : MonoBehaviour
     public float bobReturnSpeed = 8f;
     public float bobSmoothSpeed = 10f;
 
+    // Используется инструментами (Tools)
+    [HideInInspector] public float fallSpeedMultiplier = 1f;
+    public bool IsFalling          => !isGrounded && velocity.y < 0f;
+    public bool IsGrounded         => isGrounded;
+    public float VerticalVelocity  => velocity.y;
+    // Мировой Y нижней точки капсулы (уровень ног)
+    public float FeetY             => transform.position.y + controller.center.y - controller.height / 2f;
+    public void MultiplyVerticalVelocity(float multiplier) => velocity.y *= multiplier;
+
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
@@ -93,7 +102,7 @@ public class PlayerController : MonoBehaviour
         if (Keyboard.current[keyJump].wasPressedThisFrame && isGrounded)
             velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
 
-        velocity.y += gravity * Time.deltaTime;
+        velocity.y += gravity * fallSpeedMultiplier * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
     }
 

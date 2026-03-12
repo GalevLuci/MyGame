@@ -1,0 +1,105 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+/// <summary>
+/// Базовый класс для всех инструментов игрока.
+/// Вешай наследника на каждый префаб-инструмент внутри объекта tools.
+/// </summary>
+public abstract class PlayerTool : MonoBehaviour
+{
+    [Header("Клавиша экипировки")]
+    [SerializeField] private Key equipKey = Key.Digit1;
+
+    [Header("Анимация достать/убрать")]
+    [Tooltip("Время анимации (секунды)")]
+    [SerializeField] private float equipAnimDuration = 0.25f;
+    [Tooltip("Смещение позиции в спрятанном состоянии (локальные координаты игрока).\n" +
+             "(0, 0, -0.8) = из-за спины   |   (0, -0.8, 0) = снизу")]
+    [SerializeField] private Vector3 hideOffset = new Vector3(0f, 0f, -0.8f);
+    [Tooltip("Поворот в спрятанном состоянии (Euler, относительно нормального угла).\n" +
+             "(90, 0, 0) = наклонён на 90° — как за спиной")]
+    [SerializeField] private Vector3 hideRotationOffset = new Vector3(90f, 0f, 0f);
+
+    protected PlayerController player;
+    public bool IsEquipped { get; private set; }
+
+    private Vector3    equippedLocalPos;
+    private Quaternion equippedLocalRot;
+    private Quaternion hiddenLocalRot;
+    private Coroutine  animCoroutine;
+
+    /// <summary>Вызывается ToolHolder'ом при старте.</summary>
+    public virtual void Initialize(PlayerController playerController)
+    {
+        player = playerController;
+        equippedLocalPos = transform.localPosition;
+        equippedLocalRot = transform.localRotation;
+        hiddenLocalRot   = equippedLocalRot * Quaternion.Euler(hideRotationOffset);
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>Вызывается ToolHolder'ом каждый кадр (даже когда GameObject выключен).</summary>
+    public void HandleEquipInput()
+    {
+        if (Keyboard.current[equipKey].wasPressedThisFrame)
+            Toggle();
+    }
+
+    public void Toggle() { if (IsEquipped) Unequip(); else Equip(); }
+
+    public void Equip()
+    {
+        if (animCoroutine != null) StopCoroutine(animCoroutine);
+        IsEquipped = true;
+        gameObject.SetActive(true);
+        // Начинаем из спрятанной позиции + повёрнутым
+        transform.localPosition = equippedLocalPos + hideOffset;
+        transform.localRotation = hiddenLocalRot;
+        animCoroutine = StartCoroutine(SlideTo(equippedLocalPos, equippedLocalRot));
+        OnEquipped();
+    }
+
+    public void Unequip()
+    {
+        if (animCoroutine != null) StopCoroutine(animCoroutine);
+        IsEquipped = false;
+        OnUnequipped();
+        animCoroutine = StartCoroutine(SlideToThenDisable(
+            equippedLocalPos + hideOffset, hiddenLocalRot));
+    }
+
+    /// <summary>Переопредели для логики при достании.</summary>
+    protected virtual void OnEquipped() { }
+
+    /// <summary>Переопредели для логики при уборке (до начала анимации).</summary>
+    protected virtual void OnUnequipped() { }
+
+    // ──────────────── Анимация ────────────────
+
+    private IEnumerator SlideTo(Vector3 targetPos, Quaternion targetRot)
+    {
+        Vector3    startPos = transform.localPosition;
+        Quaternion startRot = transform.localRotation;
+        float elapsed = 0f;
+        while (elapsed < equipAnimDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / equipAnimDuration;
+            transform.localPosition = Vector3.Lerp(startPos, targetPos, t);
+            transform.localRotation = Quaternion.Slerp(startRot, targetRot, t);
+            yield return null;
+        }
+        transform.localPosition = targetPos;
+        transform.localRotation = targetRot;
+    }
+
+    private IEnumerator SlideToThenDisable(Vector3 targetPos, Quaternion targetRot)
+    {
+        yield return StartCoroutine(SlideTo(targetPos, targetRot));
+        gameObject.SetActive(false);
+        // Сброс для следующего достания
+        transform.localPosition = equippedLocalPos;
+        transform.localRotation = equippedLocalRot;
+    }
+}
