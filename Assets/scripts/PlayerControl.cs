@@ -31,7 +31,9 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public float fallSpeedMultiplier = 1f;
     public bool IsFalling          => !isGrounded && velocity.y < 0f;
     public bool IsGrounded         => isGrounded;
+    public bool IsMoving           => isMoving;
     public float VerticalVelocity  => velocity.y;
+    public float BobTimer          => bobTimer;
     // Мировой Y нижней точки капсулы (уровень ног)
     public float FeetY             => transform.position.y + controller.center.y - controller.height / 2f;
     public void MultiplyVerticalVelocity(float multiplier) => velocity.y *= multiplier;

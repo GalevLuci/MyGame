@@ -57,9 +57,24 @@ public class SettingsMenu : MonoBehaviour
     public TextMeshProUGUI jumpKeyText;
     public Button jumpKeyButton;
 
+    [Header("Инструменты")]
+    public TextMeshProUGUI umbrellaKeyText;
+    public Button umbrellaKeyButton;
+
+    [Tooltip("Текст и кнопка для переназначения клавиши действия (Q — одна на все инструменты).")]
+    public TextMeshProUGUI actionKeyText;
+    public Button actionKeyButton;
+
+    [Header("Взаимодействие")]
+    public TextMeshProUGUI interactKeyText;
+    public Button interactKeyButton;
+
     [Header("Ссылки")]
     public PlayerController playerController;
     public PauseMenu pauseMenu;
+    public UmbrellaTool umbrellaTool;
+    public ToolHolder toolHolder;
+    public PlayerInteraction playerInteraction;
 
     private const string SENSITIVITY_KEY = "MouseSensitivity";
     private const string PAUSE_KEY       = "PauseKey";
@@ -68,12 +83,18 @@ public class SettingsMenu : MonoBehaviour
     private const string KEY_LEFT        = "KeyLeft";
     private const string KEY_RIGHT       = "KeyRight";
     private const string KEY_JUMP        = "KeyJump";
+    private const string KEY_UMBRELLA = "KeyUmbrella";
+    private const string KEY_ACTION   = "KeyAction";
+    private const string KEY_INTERACT = "KeyInteract";
 
     private Key keyForward;
     private Key keyBack;
     private Key keyLeft;
     private Key keyRight;
     private Key keyJump;
+    private Key keyUmbrella;
+    private Key keyAction;
+    private Key keyInteract;
 
     private string rebindingTarget = "";
 
@@ -85,6 +106,9 @@ public class SettingsMenu : MonoBehaviour
         keyLeft           = (Key)PlayerPrefs.GetInt(KEY_LEFT,    (int)Key.A);
         keyRight          = (Key)PlayerPrefs.GetInt(KEY_RIGHT,   (int)Key.D);
         keyJump           = (Key)PlayerPrefs.GetInt(KEY_JUMP,    (int)Key.Space);
+        keyUmbrella = (Key)PlayerPrefs.GetInt(KEY_UMBRELLA, umbrellaTool != null ? (int)umbrellaTool.EquipKey : (int)Key.Digit1);
+        keyAction   = (Key)PlayerPrefs.GetInt(KEY_ACTION,   toolHolder   != null ? (int)toolHolder.ActionKey  : (int)Key.Q);
+        keyInteract = (Key)PlayerPrefs.GetInt(KEY_INTERACT, playerInteraction != null ? (int)playerInteraction.interactKey : (int)Key.E);
         Key savedPauseKey = (Key)PlayerPrefs.GetInt(PAUSE_KEY,   pauseMenu != null ? (int)pauseMenu.pauseKey : (int)Key.Escape);
 
         if (playerController != null)
@@ -96,6 +120,15 @@ public class SettingsMenu : MonoBehaviour
             playerController.keyRight   = keyRight;
             playerController.keyJump    = keyJump;
         }
+
+        if (umbrellaTool != null)
+            umbrellaTool.EquipKey = keyUmbrella;
+
+        if (toolHolder != null)
+            toolHolder.ActionKey = keyAction;
+
+        if (playerInteraction != null)
+            playerInteraction.interactKey = keyInteract;
 
         if (pauseMenu != null)
             pauseMenu.pauseKey = savedPauseKey;
@@ -204,7 +237,10 @@ public class SettingsMenu : MonoBehaviour
             case "Back":    if (moveBackText    != null) moveBackText.text    = "Нажмите клавишу..."; break;
             case "Left":    if (moveLeftText    != null) moveLeftText.text    = "Нажмите клавишу..."; break;
             case "Right":   if (moveRightText   != null) moveRightText.text   = "Нажмите клавишу..."; break;
-            case "Jump":    if (jumpKeyText     != null) jumpKeyText.text     = "Нажмите клавишу..."; break;
+            case "Jump":     if (jumpKeyText     != null) jumpKeyText.text     = "Нажмите клавишу..."; break;
+            case "Umbrella": if (umbrellaKeyText != null) umbrellaKeyText.text = "Нажмите клавишу..."; break;
+            case "Action":   if (actionKeyText   != null) actionKeyText.text   = "Нажмите клавишу..."; break;
+            case "Interact": if (interactKeyText != null) interactKeyText.text = "Нажмите клавишу..."; break;
         }
     }
 
@@ -241,6 +277,21 @@ public class SettingsMenu : MonoBehaviour
                 if (playerController != null) playerController.keyJump = key;
                 PlayerPrefs.SetInt(KEY_JUMP, (int)key);
                 break;
+            case "Umbrella":
+                keyUmbrella = key;
+                if (umbrellaTool != null) umbrellaTool.EquipKey = key;
+                PlayerPrefs.SetInt(KEY_UMBRELLA, (int)key);
+                break;
+            case "Action":
+                keyAction = key;
+                if (toolHolder != null) toolHolder.ActionKey = key;
+                PlayerPrefs.SetInt(KEY_ACTION, (int)key);
+                break;
+            case "Interact":
+                keyInteract = key;
+                if (playerInteraction != null) playerInteraction.interactKey = key;
+                PlayerPrefs.SetInt(KEY_INTERACT, (int)key);
+                break;
         }
 
         PlayerPrefs.Save();
@@ -257,6 +308,9 @@ public class SettingsMenu : MonoBehaviour
         if (moveLeftText    != null) moveLeftText.text    = keyLeft.ToString();
         if (moveRightText   != null) moveRightText.text   = keyRight.ToString();
         if (jumpKeyText     != null) jumpKeyText.text     = keyJump.ToString();
+        if (umbrellaKeyText != null) umbrellaKeyText.text = keyUmbrella.ToString();
+        if (actionKeyText   != null) actionKeyText.text   = keyAction.ToString();
+        if (interactKeyText != null) interactKeyText.text = keyInteract.ToString();
     }
 
     void SetAllButtonsInteractable(bool state)
@@ -267,5 +321,8 @@ public class SettingsMenu : MonoBehaviour
         if (moveLeftButton    != null) moveLeftButton.interactable    = state;
         if (moveRightButton   != null) moveRightButton.interactable   = state;
         if (jumpKeyButton     != null) jumpKeyButton.interactable     = state;
+        if (umbrellaKeyButton != null) umbrellaKeyButton.interactable = state;
+        if (actionKeyButton   != null) actionKeyButton.interactable   = state;
+        if (interactKeyButton != null) interactKeyButton.interactable = state;
     }
 }

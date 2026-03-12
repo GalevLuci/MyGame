@@ -1,8 +1,10 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Вешай на префаб umbrella (внутри tools).
-/// Открывается при падении с достаточной высоты, замедляет падение в 2 раза, закрывается при приземлении.
+/// Зонт открывается когда игрок в воздухе И зажата ActionKey (задаётся ToolHolder'ом, по умолчанию Q).
+/// Замедляет падение, закрывается при отпускании клавиши или приземлении.
 /// </summary>
 [RequireComponent(typeof(Animator))]
 public class UmbrellaTool : PlayerTool
@@ -14,15 +16,9 @@ public class UmbrellaTool : PlayerTool
     [Tooltip("Скорость анимации открытия (2 = вдвое быстрее)")]
     [SerializeField] private float openAnimSpeed = 2f;
 
-    [Tooltip("Зонт открывается когда velocity.y ниже этого значения.\n" +
-             "Увеличь (например до 1), чтобы открывался раньше — ещё до пика прыжка.")]
-    [SerializeField] private float openVelocityThreshold = 0.5f;
-
-    [Header("Минимальная высота для открытия")]
-    [Tooltip("Зонт открывается только когда ноги игрока выше этого множителя × jumpHeight.\n" +
-             "1.0 = только выше высоты прыжка (обычные прыжки и маленькие камни НЕ открывают).\n" +
-             "0.8 = чуть ниже порога (позволяет открываться чуть раньше).")]
-    [SerializeField] private float minHeightMultiplier = 1.0f;
+    [Tooltip("Множитель скорости падения когда зонт открыт.\n" +
+             "0.5 = падаешь вдвое медленнее, 0.25 = вчетверо медленнее.")]
+    [SerializeField] private float openFallSpeedMultiplier = 0.2f;
 
     [Header("Звуки")]
     [SerializeField] private AudioClip openSound;
@@ -41,14 +37,13 @@ public class UmbrellaTool : PlayerTool
         if (player == null) return;
 
         bool shouldBeOpen = !player.IsGrounded
-                         && player.VerticalVelocity < openVelocityThreshold
-                         && IsHighEnoughToOpen();
+                         && Keyboard.current[ActionKey].isPressed;
 
         if (shouldBeOpen && !isOpen)
         {
             isOpen = true;
-            player.fallSpeedMultiplier = 0.5f;
-            player.MultiplyVerticalVelocity(0.5f);
+            player.fallSpeedMultiplier = openFallSpeedMultiplier;
+            player.MultiplyVerticalVelocity(openFallSpeedMultiplier);
             animator.speed = openAnimSpeed;
             animator.Play(OpenHash);
             AudioManager.Instance?.PlaySFX(openSound);
@@ -57,21 +52,6 @@ public class UmbrellaTool : PlayerTool
         {
             ForceClose();
         }
-    }
-
-    /// <summary>
-    /// Рейкаст вниз от НОГ игрока (FeetY).
-    /// Открывать зонт можно только если земля дальше, чем jumpHeight × minHeightMultiplier.
-    /// </summary>
-    private bool IsHighEnoughToOpen()
-    {
-        float minDist = player.jumpHeight * minHeightMultiplier;
-        // Стреляем от ног вниз: если земля в пределах minDist — слишком низко
-        Vector3 feetPos = new Vector3(
-            player.transform.position.x,
-            player.FeetY,
-            player.transform.position.z);
-        return !Physics.Raycast(feetPos, Vector3.down, minDist);
     }
 
     protected override void OnEquipped()

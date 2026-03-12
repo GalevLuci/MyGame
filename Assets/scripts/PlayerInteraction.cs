@@ -7,6 +7,7 @@ public class PlayerInteraction : MonoBehaviour
     public Transform cameraTransform;
     public float interactDistance = 3f;
     public LayerMask interactableLayer;
+    public Key interactKey = Key.E;
 
     [Header("Object Holding (HL2 Style)")]
     public float holdDistance = 2.5f;
@@ -21,7 +22,7 @@ public class PlayerInteraction : MonoBehaviour
 
     void Update()
     {
-        if (Keyboard.current.eKey.wasPressedThisFrame)
+        if (Keyboard.current[interactKey].wasPressedThisFrame)
         {
             if (heldObject != null)
                 DropObject();

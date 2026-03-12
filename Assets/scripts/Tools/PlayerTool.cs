@@ -8,6 +8,10 @@ using UnityEngine.InputSystem;
 /// </summary>
 public abstract class PlayerTool : MonoBehaviour
 {
+    [Header("Владение")]
+    [Tooltip("Включи если инструмент уже есть у игрока с самого начала (не нужно подбирать).")]
+    [SerializeField] private bool startOwned = false;
+
     [Header("Клавиша экипировки")]
     [SerializeField] private Key equipKey = Key.Digit1;
 
@@ -23,6 +27,14 @@ public abstract class PlayerTool : MonoBehaviour
 
     protected PlayerController player;
     public bool IsEquipped { get; private set; }
+    public bool IsOwned    { get; private set; }
+    /// <summary>Клавиша экипировки — читается и задаётся из SettingsMenu.</summary>
+    public Key EquipKey  { get => equipKey;  set => equipKey  = value; }
+    /// <summary>Универсальная клавиша действия (Q по умолчанию) — одна на все инструменты, задаётся ToolHolder'ом.</summary>
+    public Key ActionKey { get; set; } = Key.Q;
+
+    /// <summary>Даёт инструмент игроку (например при подборе с земли).</summary>
+    public void Give() => IsOwned = true;
 
     private Vector3    equippedLocalPos;
     private Quaternion equippedLocalRot;
@@ -36,12 +48,14 @@ public abstract class PlayerTool : MonoBehaviour
         equippedLocalPos = transform.localPosition;
         equippedLocalRot = transform.localRotation;
         hiddenLocalRot   = equippedLocalRot * Quaternion.Euler(hideRotationOffset);
+        IsOwned = startOwned;
         gameObject.SetActive(false);
     }
 
     /// <summary>Вызывается ToolHolder'ом каждый кадр (даже когда GameObject выключен).</summary>
     public void HandleEquipInput()
     {
+        if (!IsOwned) return;
         if (Keyboard.current[equipKey].wasPressedThisFrame)
             Toggle();
     }

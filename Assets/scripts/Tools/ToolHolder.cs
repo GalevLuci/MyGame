@@ -1,33 +1,127 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
-/// Вешай на объект tools (дочерний от игрока).
-/// Инициализирует все инструменты и опрашивает их клавиши каждый кадр.
+/// Вешай на объект tools (дочерний от камеры).
+/// Инициализирует все инструменты, опрашивает клавиши каждый кадр,
+/// компенсирует вертикальный поворот камеры и добавляет покачивание при ходьбе.
 /// </summary>
 public class ToolHolder : MonoBehaviour
 {
+    [Header("Компенсация поворота камеры")]
+    [Tooltip("Компенсировать вертикальный поворот камеры (pitch),\n" +
+             "чтобы инструменты не наклонялись вместе с камерой.")]
+    [SerializeField] private bool counteractCameraPitch = true;
+
+    [Header("Клавиша действия (одна на все инструменты)")]
+    [Tooltip("Клавиша действия — одна для всех инструментов (открыть зонт, применить предмет и т.д.).\n" +
+             "Задаётся здесь и автоматически передаётся каждому инструменту.")]
+    [SerializeField] private Key actionKey = Key.Q;
+
+    /// <summary>
+    /// Единая клавиша действия для всех инструментов.
+    /// При изменении автоматически обновляет ActionKey у каждого инструмента.
+    /// </summary>
+    public Key ActionKey
+    {
+        get => actionKey;
+        set
+        {
+            actionKey = value;
+            if (tools != null)
+                foreach (var tool in tools)
+                    tool.ActionKey = value;
+        }
+    }
+
+    [Header("Покачивание при ходьбе")]
+    [SerializeField] private bool enableWalkBob = true;
+
+    [Tooltip("Амплитуда покачивания по вертикали (Y)")]
+    [SerializeField] private float bobAmplitudeY = 0.04f;
+
+    [Tooltip("Амплитуда покачивания по горизонтали (X)")]
+    [SerializeField] private float bobAmplitudeX = 0.02f;
+
+    [Tooltip("Скорость сглаживания покачивания")]
+    [SerializeField] private float bobSmoothSpeed = 10f;
+
+    [Tooltip("Скорость возврата к нулю когда игрок стоит")]
+    [SerializeField] private float bobReturnSpeed = 8f;
+
     private PlayerTool[] tools;
+    private PlayerController playerController;
+
+    private Vector3 baseLocalPos;
+    private Vector3 currentBobOffset = Vector3.zero;
+    private Vector3 targetBobOffset  = Vector3.zero;
 
     void Start()
     {
-        var playerController = GetComponentInParent<PlayerController>();
+        playerController = GetComponentInParent<PlayerController>();
         if (playerController == null)
         {
             Debug.LogError("[ToolHolder] PlayerController не найден в родительских объектах!", this);
             return;
         }
 
+        baseLocalPos = transform.localPosition;
+
         // includeInactive: true — инструменты начинают выключенными
         tools = GetComponentsInChildren<PlayerTool>(includeInactive: true);
         foreach (var tool in tools)
+        {
             tool.Initialize(playerController);
+            tool.ActionKey = actionKey;
+        }
     }
 
     void Update()
     {
         if (tools == null) return;
-        // Опрашиваем клавиши у всех инструментов, даже если их GameObject выключен
         foreach (var tool in tools)
             tool.HandleEquipInput();
+    }
+
+    void LateUpdate()
+    {
+        if (playerController == null) return;
+
+        // ── 1. Компенсация pitch камеры ──────────────────────────────────────
+        if (counteractCameraPitch)
+        {
+            // Инвертируем локальный поворот камеры (pitch) так,
+            // чтобы инструменты оставались горизонтальными при взгляде вверх/вниз
+            transform.localRotation = Quaternion.Inverse(playerController.cameraTransform.localRotation);
+        }
+        else
+        {
+            transform.localRotation = Quaternion.identity;
+        }
+
+        // ── 2. Покачивание при ходьбе ─────────────────────────────────────────
+        if (enableWalkBob)
+        {
+            if (playerController.IsMoving)
+            {
+                float t = playerController.BobTimer;
+                float bobY = Mathf.Sin(t * 2f) * bobAmplitudeY;
+                float bobX = Mathf.Sin(t)       * bobAmplitudeX;
+                targetBobOffset = new Vector3(bobX, bobY, 0f);
+            }
+            else
+            {
+                targetBobOffset = Vector3.zero;
+            }
+
+            currentBobOffset = Vector3.Lerp(currentBobOffset, targetBobOffset,
+                                            Time.deltaTime * (playerController.IsMoving ? bobSmoothSpeed : bobReturnSpeed));
+        }
+        else
+        {
+            currentBobOffset = Vector3.zero;
+        }
+
+        transform.localPosition = baseLocalPos + currentBobOffset;
     }
 }
