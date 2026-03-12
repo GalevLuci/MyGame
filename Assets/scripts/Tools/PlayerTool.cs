@@ -57,16 +57,6 @@ public abstract class PlayerTool : MonoBehaviour
     /// <summary>Звук достания — задаётся ToolHolder'ом (один звук на все инструменты).</summary>
     public System.Action onEquipSound;
 
-    /// <summary>Вызывается ToolHolder'ом каждый кадр (даже когда GameObject выключен).</summary>
-    /// <param name="blockEquip">Запретить достать, если уже достан другой инструмент.</param>
-    public void HandleEquipInput(bool blockEquip = false)
-    {
-        if (!IsOwned) return;
-        if (!Keyboard.current[equipKey].wasPressedThisFrame) return;
-        if (IsEquipped) Unequip();
-        else if (!blockEquip) Equip();
-    }
-
     public void Toggle() { if (IsEquipped) Unequip(); else Equip(); }
 
     public void Equip()
@@ -84,13 +74,14 @@ public abstract class PlayerTool : MonoBehaviour
         OnEquipped();
     }
 
-    public void Unequip()
+    /// <summary>onComplete вызывается когда анимация убрать закончилась (для свапа инструментов).</summary>
+    public void Unequip(System.Action onComplete = null)
     {
         if (animCoroutine != null) StopCoroutine(animCoroutine);
         IsEquipped = false;
         OnUnequipped();
         animCoroutine = StartCoroutine(SlideToThenDisable(
-            GetHiddenLocalPos(), hiddenLocalRot));
+            GetHiddenLocalPos(), hiddenLocalRot, onComplete));
     }
 
     /// <summary>Переопредели для логики при достании.</summary>
@@ -140,12 +131,14 @@ public abstract class PlayerTool : MonoBehaviour
         transform.localRotation = targetRot;
     }
 
-    private IEnumerator SlideToThenDisable(Vector3 targetPos, Quaternion targetRot)
+    private IEnumerator SlideToThenDisable(Vector3 targetPos, Quaternion targetRot,
+                                           System.Action onComplete = null)
     {
         yield return StartCoroutine(SlideTo(targetPos, targetRot));
         gameObject.SetActive(false);
         // Сброс для следующего достания
         transform.localPosition = equippedLocalPos;
         transform.localRotation = equippedLocalRot;
+        onComplete?.Invoke();
     }
 }

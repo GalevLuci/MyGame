@@ -38,8 +38,8 @@ public class FishingHook : MonoBehaviour
         var rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.isKinematic    = true;
             rb.linearVelocity = Vector3.zero;
+            rb.isKinematic    = true;
         }
 
         onLanded?.Invoke(pos);

@@ -61,6 +61,10 @@ public class SettingsMenu : MonoBehaviour
     public TextMeshProUGUI umbrellaKeyText;
     public Button umbrellaKeyButton;
 
+    [Tooltip("Текст и кнопка для переназначения клавиши достания удочки.")]
+    public TextMeshProUGUI fishingRodKeyText;
+    public Button fishingRodKeyButton;
+
     [Tooltip("Текст и кнопка для переназначения клавиши действия (Q — одна на все инструменты).")]
     public TextMeshProUGUI actionKeyText;
     public Button actionKeyButton;
@@ -73,6 +77,7 @@ public class SettingsMenu : MonoBehaviour
     public PlayerController playerController;
     public PauseMenu pauseMenu;
     public UmbrellaTool umbrellaTool;
+    public PlayerTool fishingRodTool;
     public ToolHolder toolHolder;
     public PlayerInteraction playerInteraction;
 
@@ -83,9 +88,10 @@ public class SettingsMenu : MonoBehaviour
     private const string KEY_LEFT        = "KeyLeft";
     private const string KEY_RIGHT       = "KeyRight";
     private const string KEY_JUMP        = "KeyJump";
-    private const string KEY_UMBRELLA = "KeyUmbrella";
-    private const string KEY_ACTION   = "KeyAction";
-    private const string KEY_INTERACT = "KeyInteract";
+    private const string KEY_UMBRELLA    = "KeyUmbrella";
+    private const string KEY_FISHING_ROD = "KeyFishingRod";
+    private const string KEY_ACTION      = "KeyAction";
+    private const string KEY_INTERACT    = "KeyInteract";
 
     private Key keyForward;
     private Key keyBack;
@@ -93,6 +99,7 @@ public class SettingsMenu : MonoBehaviour
     private Key keyRight;
     private Key keyJump;
     private Key keyUmbrella;
+    private Key keyFishingRod;
     private Key keyAction;
     private Key keyInteract;
 
@@ -106,9 +113,10 @@ public class SettingsMenu : MonoBehaviour
         keyLeft           = (Key)PlayerPrefs.GetInt(KEY_LEFT,    (int)Key.A);
         keyRight          = (Key)PlayerPrefs.GetInt(KEY_RIGHT,   (int)Key.D);
         keyJump           = (Key)PlayerPrefs.GetInt(KEY_JUMP,    (int)Key.Space);
-        keyUmbrella = (Key)PlayerPrefs.GetInt(KEY_UMBRELLA, umbrellaTool != null ? (int)umbrellaTool.EquipKey : (int)Key.Digit1);
-        keyAction   = (Key)PlayerPrefs.GetInt(KEY_ACTION,   toolHolder   != null ? (int)toolHolder.ActionKey  : (int)Key.Q);
-        keyInteract = (Key)PlayerPrefs.GetInt(KEY_INTERACT, playerInteraction != null ? (int)playerInteraction.interactKey : (int)Key.E);
+        keyUmbrella    = (Key)PlayerPrefs.GetInt(KEY_UMBRELLA,    umbrellaTool    != null ? (int)umbrellaTool.EquipKey    : (int)Key.Digit1);
+        keyFishingRod  = (Key)PlayerPrefs.GetInt(KEY_FISHING_ROD, fishingRodTool  != null ? (int)fishingRodTool.EquipKey  : (int)Key.Digit2);
+        keyAction      = (Key)PlayerPrefs.GetInt(KEY_ACTION,      toolHolder      != null ? (int)toolHolder.ActionKey     : (int)Key.Q);
+        keyInteract    = (Key)PlayerPrefs.GetInt(KEY_INTERACT,    playerInteraction != null ? (int)playerInteraction.interactKey : (int)Key.E);
         Key savedPauseKey = (Key)PlayerPrefs.GetInt(PAUSE_KEY,   pauseMenu != null ? (int)pauseMenu.pauseKey : (int)Key.Escape);
 
         if (playerController != null)
@@ -123,6 +131,9 @@ public class SettingsMenu : MonoBehaviour
 
         if (umbrellaTool != null)
             umbrellaTool.EquipKey = keyUmbrella;
+
+        if (fishingRodTool != null)
+            fishingRodTool.EquipKey = keyFishingRod;
 
         if (toolHolder != null)
             toolHolder.ActionKey = keyAction;
@@ -238,9 +249,10 @@ public class SettingsMenu : MonoBehaviour
             case "Left":    if (moveLeftText    != null) moveLeftText.text    = "Нажмите клавишу..."; break;
             case "Right":   if (moveRightText   != null) moveRightText.text   = "Нажмите клавишу..."; break;
             case "Jump":     if (jumpKeyText     != null) jumpKeyText.text     = "Нажмите клавишу..."; break;
-            case "Umbrella": if (umbrellaKeyText != null) umbrellaKeyText.text = "Нажмите клавишу..."; break;
-            case "Action":   if (actionKeyText   != null) actionKeyText.text   = "Нажмите клавишу..."; break;
-            case "Interact": if (interactKeyText != null) interactKeyText.text = "Нажмите клавишу..."; break;
+            case "Umbrella":   if (umbrellaKeyText   != null) umbrellaKeyText.text   = "Нажмите клавишу..."; break;
+            case "FishingRod": if (fishingRodKeyText  != null) fishingRodKeyText.text  = "Нажмите клавишу..."; break;
+            case "Action":     if (actionKeyText      != null) actionKeyText.text      = "Нажмите клавишу..."; break;
+            case "Interact":   if (interactKeyText    != null) interactKeyText.text    = "Нажмите клавишу..."; break;
         }
     }
 
@@ -282,6 +294,11 @@ public class SettingsMenu : MonoBehaviour
                 if (umbrellaTool != null) umbrellaTool.EquipKey = key;
                 PlayerPrefs.SetInt(KEY_UMBRELLA, (int)key);
                 break;
+            case "FishingRod":
+                keyFishingRod = key;
+                if (fishingRodTool != null) fishingRodTool.EquipKey = key;
+                PlayerPrefs.SetInt(KEY_FISHING_ROD, (int)key);
+                break;
             case "Action":
                 keyAction = key;
                 if (toolHolder != null) toolHolder.ActionKey = key;
@@ -308,9 +325,10 @@ public class SettingsMenu : MonoBehaviour
         if (moveLeftText    != null) moveLeftText.text    = keyLeft.ToString();
         if (moveRightText   != null) moveRightText.text   = keyRight.ToString();
         if (jumpKeyText     != null) jumpKeyText.text     = keyJump.ToString();
-        if (umbrellaKeyText != null) umbrellaKeyText.text = keyUmbrella.ToString();
-        if (actionKeyText   != null) actionKeyText.text   = keyAction.ToString();
-        if (interactKeyText != null) interactKeyText.text = keyInteract.ToString();
+        if (umbrellaKeyText   != null) umbrellaKeyText.text   = keyUmbrella.ToString();
+        if (fishingRodKeyText  != null) fishingRodKeyText.text  = keyFishingRod.ToString();
+        if (actionKeyText      != null) actionKeyText.text      = keyAction.ToString();
+        if (interactKeyText    != null) interactKeyText.text    = keyInteract.ToString();
     }
 
     void SetAllButtonsInteractable(bool state)
@@ -321,8 +339,9 @@ public class SettingsMenu : MonoBehaviour
         if (moveLeftButton    != null) moveLeftButton.interactable    = state;
         if (moveRightButton   != null) moveRightButton.interactable   = state;
         if (jumpKeyButton     != null) jumpKeyButton.interactable     = state;
-        if (umbrellaKeyButton != null) umbrellaKeyButton.interactable = state;
-        if (actionKeyButton   != null) actionKeyButton.interactable   = state;
-        if (interactKeyButton != null) interactKeyButton.interactable = state;
+        if (umbrellaKeyButton   != null) umbrellaKeyButton.interactable   = state;
+        if (fishingRodKeyButton  != null) fishingRodKeyButton.interactable  = state;
+        if (actionKeyButton      != null) actionKeyButton.interactable      = state;
+        if (interactKeyButton    != null) interactKeyButton.interactable    = state;
     }
 }

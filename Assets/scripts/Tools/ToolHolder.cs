@@ -89,17 +89,54 @@ public class ToolHolder : MonoBehaviour
         return false;
     }
 
+    // Блокирует весь ввод пока идёт анимация свапа инструментов
+    private bool isTransitioning = false;
+
     void Update()
     {
-        if (tools == null) return;
+        if (tools == null || isTransitioning) return;
 
-        // Если хоть один инструмент достан — нельзя достать другой
-        bool anyEquipped = false;
-        foreach (var tool in tools)
-            if (tool.IsEquipped) { anyEquipped = true; break; }
+        // Найти уже достанный инструмент
+        PlayerTool equipped = null;
+        foreach (var t in tools)
+            if (t.IsEquipped) { equipped = t; break; }
 
         foreach (var tool in tools)
-            tool.HandleEquipInput(blockEquip: anyEquipped && !tool.IsEquipped);
+        {
+            if (!tool.IsOwned) continue;
+            if (!Keyboard.current[tool.EquipKey].wasPressedThisFrame) continue;
+
+            if (tool.IsEquipped)
+            {
+                // Убрать тот же инструмент
+                tool.Unequip();
+            }
+            else if (equipped == null)
+            {
+                // Ничего не достано — просто достать
+                tool.Equip();
+            }
+            else
+            {
+                // Другой инструмент уже в руках — свап
+                StartCoroutine(SwapTools(equipped, tool));
+            }
+            break;
+        }
+    }
+
+    /// <summary>
+    /// Убирает <paramref name="from"/>, ждёт конца анимации, затем достаёт <paramref name="to"/>.
+    /// Во время свапа весь ввод заблокирован (<see cref="isTransitioning"/> = true).
+    /// </summary>
+    private System.Collections.IEnumerator SwapTools(PlayerTool from, PlayerTool to)
+    {
+        isTransitioning = true;
+        bool done = false;
+        from.Unequip(() => done = true);
+        while (!done) yield return null;
+        isTransitioning = false;
+        to.Equip();
     }
 
     void LateUpdate()
