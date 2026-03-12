@@ -5,12 +5,12 @@ using UnityEngine.UI;
 /// Полоска воздуха на HUD.
 ///
 /// Настройка в Editor:
-///  1. Canvas → дочерний GameObject "AirBar" (это barRoot).
-///  2. Внутри barRoot — Image с Fill Type = Filled, Method = Horizontal (это fillImage).
+///  1. Canvas → дочерний GameObject "AirBar" (это barRoot, по умолчанию выключи его).
+///  2. Внутри barRoot создай два Image:
+///       - Background  (фон, любой цвет — например тёмный)
+///       - Fill        (заливка, яркий цвет — например голубой/зелёный)
+///     Перетащи Fill в поле fillRect. Source Image и Fill Type НЕ нужны.
 ///  3. Повесь AirBarUI на любой GameObject (НЕ на barRoot), заполни поля.
-///
-/// Полоска показывается когда игрок в дыму ИЛИ воздух не полный.
-/// Скрывается через hideDelay секунд как только воздух полный и игрок не в дыму.
 /// </summary>
 public class AirBarUI : MonoBehaviour
 {
@@ -18,8 +18,8 @@ public class AirBarUI : MonoBehaviour
     [Tooltip("Корневой GameObject полоски (будет включаться/выключаться).")]
     [SerializeField] private GameObject barRoot;
 
-    [Tooltip("Image с Fill Type = Filled. fillAmount = текущий воздух 0-1.")]
-    [SerializeField] private Image fillImage;
+    [Tooltip("RectTransform заливки (Fill). Ширина меняется через localScale.x от 0 до 1.")]
+    [SerializeField] private RectTransform fillRect;
 
     [Header("Настройки")]
     [Tooltip("Компонент PlayerAir на игроке.")]
@@ -44,7 +44,7 @@ public class AirBarUI : MonoBehaviour
         }
 
         currentFill = playerAir.AirNormalized;
-        if (fillImage != null) fillImage.fillAmount = currentFill;
+        ApplyFill(currentFill);
         SetVisible(false);
     }
 
@@ -56,20 +56,18 @@ public class AirBarUI : MonoBehaviour
 
         // ── Плавная заливка ───────────────────────────────────────────────────
         currentFill = Mathf.MoveTowards(currentFill, normalized, fillSmoothSpeed * Time.deltaTime);
-        if (fillImage != null) fillImage.fillAmount = currentFill;
+        ApplyFill(currentFill);
 
         // ── Логика показа/скрытия ─────────────────────────────────────────────
         bool wantsVisible = playerAir.IsInSmoke || normalized < 0.9999f;
 
         if (wantsVisible)
         {
-            // Сбросить таймер и показать
             hideTimer = hideDelay;
             SetVisible(true);
         }
         else
         {
-            // Воздух полный и не в дыму — отсчёт до скрытия
             if (hideTimer > 0f)
             {
                 hideTimer -= Time.deltaTime;
@@ -77,6 +75,13 @@ public class AirBarUI : MonoBehaviour
                     SetVisible(false);
             }
         }
+    }
+
+    // Меняем только X-масштаб: 0 = пустая, 1 = полная
+    void ApplyFill(float t)
+    {
+        if (fillRect == null) return;
+        fillRect.localScale = new Vector3(Mathf.Clamp01(t), 1f, 1f);
     }
 
     void SetVisible(bool value)
