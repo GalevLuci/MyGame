@@ -37,6 +37,7 @@ public class PlayerController : MonoBehaviour
     // Мировой Y нижней точки капсулы (уровень ног)
     public float FeetY             => transform.position.y + controller.center.y - controller.height / 2f;
     public void MultiplyVerticalVelocity(float multiplier) => velocity.y *= multiplier;
+    public void SetExternalVelocity(Vector3 v) => externalVelocity = v;
 
     private CharacterController controller;
     private Vector3 velocity;
@@ -44,6 +45,7 @@ public class PlayerController : MonoBehaviour
     private float xRotation = 0f;
     private float yRotation = 0f;
 
+    private Vector3 externalVelocity = Vector3.zero;
     private float bobTimer = 0f;
     private Vector3 currentBobOffset = Vector3.zero;
     private Vector3 targetBobOffset = Vector3.zero;
@@ -106,6 +108,12 @@ public class PlayerController : MonoBehaviour
 
         velocity.y += gravity * fallSpeedMultiplier * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
+
+        if (externalVelocity != Vector3.zero)
+        {
+            controller.Move(externalVelocity * Time.deltaTime);
+            externalVelocity = Vector3.zero;
+        }
     }
 
     void HandleCameraBob()
