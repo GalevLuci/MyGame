@@ -89,6 +89,14 @@ public class ToolHolder : MonoBehaviour
         return false;
     }
 
+    /// <summary>Возвращает инструмент который сейчас в руках, или null если ничего не достано.</summary>
+    public PlayerTool GetEquippedTool()
+    {
+        foreach (var t in tools)
+            if (t.IsEquipped) return t;
+        return null;
+    }
+
     // Блокирует весь ввод пока идёт анимация свапа инструментов
     private bool isTransitioning = false;
 

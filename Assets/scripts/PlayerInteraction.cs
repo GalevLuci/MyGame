@@ -15,10 +15,15 @@ public class PlayerInteraction : MonoBehaviour
     public float throwForce = 15f;
     public float rotationSmoothing = 10f;
 
+    [Header("Инструменты")]
+    [Tooltip("Ссылка на ToolHolder — чтобы убирать инструмент при подборе объекта и возвращать при броске/опускании.")]
+    public ToolHolder toolHolder;
+
     private GameObject heldObject;
     private Rigidbody heldRb;
     private float originalDrag;
     private float originalAngularDrag;
+    private PlayerTool toolBeforePickup;  // инструмент который был в руках до подбора
 
     void Update()
     {
@@ -70,6 +75,13 @@ public class PlayerInteraction : MonoBehaviour
 
     void PickUpObject(GameObject obj)
     {
+        // Убрать инструмент если что-то достано
+        if (toolHolder != null)
+        {
+            toolBeforePickup = toolHolder.GetEquippedTool();
+            toolBeforePickup?.Unequip();
+        }
+
         heldObject = obj;
         heldRb = obj.GetComponent<Rigidbody>();
 
@@ -122,6 +134,10 @@ public class PlayerInteraction : MonoBehaviour
         Debug.Log("Dropped: " + heldObject.name);
         heldObject = null;
         heldRb = null;
+
+        // Вернуть инструмент который был до подбора
+        toolBeforePickup?.Equip();
+        toolBeforePickup = null;
     }
 
     void ThrowObject()
@@ -137,5 +153,9 @@ public class PlayerInteraction : MonoBehaviour
         Debug.Log("Threw: " + heldObject.name);
         heldObject = null;
         heldRb = null;
+
+        // Вернуть инструмент который был до броска
+        toolBeforePickup?.Equip();
+        toolBeforePickup = null;
     }
 }
