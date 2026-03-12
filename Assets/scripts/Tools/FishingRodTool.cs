@@ -11,7 +11,7 @@ public class FishingRodTool : PlayerTool
     [SerializeField] private float hookSpeed        = 25f;
     [SerializeField] private float pullSpeed        = 14f;      // скорость притяжения с земли
     [SerializeField] private float arrivalDistance  = 1f;
-    [SerializeField] private float groundedCooldown = 1f;
+    [SerializeField] private float groundedCooldown = 0.33f;
     [SerializeField] private float minHookHeight    = 1.5f;     // мин. высота крюка над игроком чтобы не считалось волочением
 
     [Header("Качание (маятник)")]

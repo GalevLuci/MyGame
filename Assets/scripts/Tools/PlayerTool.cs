@@ -17,7 +17,7 @@ public abstract class PlayerTool : MonoBehaviour
 
     [Header("Анимация достать/убрать")]
     [Tooltip("Время анимации (секунды)")]
-    [SerializeField] private float equipAnimDuration = 0.25f;
+    [SerializeField] private float equipAnimDuration = 0.12f;
     [Tooltip("Смещение позиции в спрятанном состоянии (локальные координаты игрока).\n" +
              "(0, 0, -0.8) = из-за спины   |   (0, -0.8, 0) = снизу")]
     [SerializeField] private Vector3 hideOffset = new Vector3(0f, 0f, -0.8f);
