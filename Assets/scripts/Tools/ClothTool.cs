@@ -20,12 +20,18 @@ public class ClothTool : PlayerTool
 
     protected override void OnEquipped()
     {
-        // Ищем PlayerAir на игроке
+        if (playerAir != null) return; // уже нашли раньше
+
+        // Ищем PlayerAir: на том же объекте, в родителях, в детях, в сцене
         playerAir = player.GetComponent<PlayerAir>();
+        if (playerAir == null) playerAir = player.GetComponentInParent<PlayerAir>();
+        if (playerAir == null) playerAir = player.GetComponentInChildren<PlayerAir>();
+        if (playerAir == null) playerAir = FindObjectOfType<PlayerAir>();
+
         if (playerAir == null)
-            playerAir = player.GetComponentInChildren<PlayerAir>();
-        if (playerAir == null)
-            Debug.LogWarning("[ClothTool] PlayerAir не найден на игроке!", this);
+            Debug.LogWarning("[ClothTool] PlayerAir не найден нигде в сцене!", this);
+        else
+            Debug.Log($"[ClothTool] PlayerAir найден на объекте: {playerAir.gameObject.name}");
     }
 
     protected override void OnUnequipped()
