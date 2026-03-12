@@ -34,14 +34,18 @@ public class PlayerAir : MonoBehaviour
     public event System.Action OnExitSmoke;
     /// <summary>Вызывается каждый кадр пока воздух = 0 и игрок в дыму.</summary>
     public event System.Action OnSuffocating;
+    /// <summary>Вызывается один раз когда воздух впервые достигает 0.</summary>
+    public event System.Action OnDead;
 
     // ── Приватное ─────────────────────────────────────────────────────────────
     private float currentAir;
     private bool  isInSmoke;
+    private bool  hasDied;
 
     void Start()
     {
         currentAir = maxAir;
+        hasDied    = false;
     }
 
     void Update()
@@ -59,8 +63,13 @@ public class PlayerAir : MonoBehaviour
         else
         {
             OnSuffocating?.Invoke();
-            // Урон от удушья (опционально)
-            // if (suffocationDamageRate > 0f) ... подключи систему HP здесь
+
+            // Один раз вызвать OnDead при первом достижении 0
+            if (!hasDied)
+            {
+                hasDied = true;
+                OnDead?.Invoke();
+            }
         }
     }
 
@@ -88,6 +97,7 @@ public class PlayerAir : MonoBehaviour
     public void ResetAir()
     {
         currentAir = maxAir;
+        hasDied    = false;
         OnAirChanged?.Invoke(1f);
     }
 }

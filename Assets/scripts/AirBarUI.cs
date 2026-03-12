@@ -3,37 +3,43 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Полоска воздуха на HUD.
+/// CanvasGroup добавляется на barRoot автоматически — вручную добавлять не нужно.
 ///
-/// Настройка в Editor:
-///  1. Canvas → дочерний GameObject "AirBar" (это barRoot, по умолчанию выключи его).
-///  2. Внутри barRoot создай два Image:
-///       - Background  (фон, любой цвет — например тёмный)
-///       - Fill        (заливка, яркий цвет — например голубой/зелёный)
-///     Перетащи Fill в поле fillRect. Source Image и Fill Type НЕ нужны.
-///  3. Повесь AirBarUI на любой GameObject (НЕ на barRoot), заполни поля.
+/// Поведение:
+///  - Шкала полная (воздух 100%) → полупрозрачная
+///  - Не меняется 10 секунд    → скрывается
+///  - Меняется снова            → появляется полностью непрозрачной
 /// </summary>
 public class AirBarUI : MonoBehaviour
 {
     [Header("UI элементы")]
-    [Tooltip("Корневой GameObject полоски (будет включаться/выключаться).")]
-    [SerializeField] private GameObject barRoot;
-
-    [Tooltip("RectTransform заливки (Fill). Ширина меняется через localScale.x от 0 до 1.")]
+    [SerializeField] private GameObject    barRoot;
     [SerializeField] private RectTransform fillRect;
 
-    [Header("Настройки")]
-    [Tooltip("Компонент PlayerAir на игроке.")]
+    [Header("Ссылки")]
     [SerializeField] private PlayerAir playerAir;
 
-    [Tooltip("Через сколько секунд скрыть полоску когда воздух полный и не в дыму.")]
-    [SerializeField] private float hideDelay = 2f;
+    [Header("Прозрачность")]
+    [Tooltip("Прозрачность когда шкала полная и не меняется (0=невидима, 1=непрозрачна).")]
+    [SerializeField] private float idleAlpha      = 0.3f;
+
+    [Tooltip("Скорость плавного изменения прозрачности.")]
+    [SerializeField] private float alphaLerpSpeed = 4f;
+
+    [Header("Таймеры")]
+    [Tooltip("Через сколько секунд без изменений полностью скрыть шкалу.")]
+    [SerializeField] private float idleHideDelay  = 10f;
 
     [Tooltip("Скорость плавного изменения заливки.")]
     [SerializeField] private float fillSmoothSpeed = 8f;
 
-    private float currentFill = 1f;
-    private float hideTimer   = 0f;
-    private bool  isVisible   = false;
+    private CanvasGroup canvasGroup;
+    private float currentFill   = 1f;
+    private float currentAlpha  = 0f;
+    private float targetAlpha   = 0f;
+    private float timeSinceChange = 0f;
+    private float lastNormalized  = 1f;
+    private bool  isVisible       = false;
 
     void Start()
     {
@@ -43,7 +49,15 @@ public class AirBarUI : MonoBehaviour
             return;
         }
 
-        currentFill = playerAir.AirNormalized;
+        // Авто-добавляем CanvasGroup если нет
+        if (barRoot != null)
+        {
+            canvasGroup = barRoot.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = barRoot.AddComponent<CanvasGroup>();
+        }
+
+        lastNormalized = playerAir.AirNormalized;
+        currentFill    = lastNormalized;
         ApplyFill(currentFill);
         SetVisible(false);
     }
@@ -53,31 +67,43 @@ public class AirBarUI : MonoBehaviour
         if (playerAir == null) return;
 
         float normalized = playerAir.AirNormalized;
+        bool  airChanged = Mathf.Abs(normalized - lastNormalized) > 0.001f;
 
         // ── Плавная заливка ───────────────────────────────────────────────────
         currentFill = Mathf.MoveTowards(currentFill, normalized, fillSmoothSpeed * Time.deltaTime);
         ApplyFill(currentFill);
 
-        // ── Логика показа/скрытия ─────────────────────────────────────────────
-        bool wantsVisible = playerAir.IsInSmoke || normalized < 0.9999f;
-
-        if (wantsVisible)
+        // ── Логика видимости и прозрачности ──────────────────────────────────
+        if (airChanged || playerAir.IsInSmoke)
         {
-            hideTimer = hideDelay;
+            // Воздух меняется или игрок в дыму — показать полностью
+            lastNormalized  = normalized;
+            timeSinceChange = 0f;
             SetVisible(true);
+            targetAlpha = 1f;
         }
         else
         {
-            if (hideTimer > 0f)
+            timeSinceChange += Time.deltaTime;
+
+            if (normalized >= 0.9999f)
             {
-                hideTimer -= Time.deltaTime;
-                if (hideTimer <= 0f)
-                    SetVisible(false);
+                // Шкала полная и стоит → полупрозрачная
+                targetAlpha = idleAlpha;
+            }
+
+            if (timeSinceChange >= idleHideDelay)
+            {
+                // Не менялась 10 секунд → скрыть
+                SetVisible(false);
             }
         }
+
+        // ── Плавная прозрачность ──────────────────────────────────────────────
+        currentAlpha = Mathf.Lerp(currentAlpha, targetAlpha, alphaLerpSpeed * Time.deltaTime);
+        if (canvasGroup != null) canvasGroup.alpha = currentAlpha;
     }
 
-    // Меняем только X-масштаб: 0 = пустая, 1 = полная
     void ApplyFill(float t)
     {
         if (fillRect == null) return;
@@ -88,6 +114,15 @@ public class AirBarUI : MonoBehaviour
     {
         if (isVisible == value) return;
         isVisible = value;
-        barRoot?.SetActive(value);
+        if (value)
+        {
+            barRoot?.SetActive(true);
+            currentAlpha = 0f; // начинаем fade-in с нуля
+            targetAlpha  = 1f;
+        }
+        else
+        {
+            barRoot?.SetActive(false);
+        }
     }
 }
