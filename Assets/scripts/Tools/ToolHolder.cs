@@ -53,12 +53,20 @@ public class ToolHolder : MonoBehaviour
     [Tooltip("Скорость возврата к нулю когда игрок стоит")]
     [SerializeField] private float bobReturnSpeed = 8f;
 
+    [Header("Физический подбор предметов")]
+    [Tooltip("Ссылка на PlayerInteraction: пока игрок держит предмет — инструмент убирается и ввод блокируется.")]
+    [SerializeField] private PlayerInteraction playerInteraction;
+
     private PlayerTool[] tools;
     private PlayerController playerController;
 
     private Vector3 baseLocalPos;
     private Vector3 currentBobOffset = Vector3.zero;
     private Vector3 targetBobOffset  = Vector3.zero;
+
+    // Для отслеживания подбора физического предмета
+    private bool        wasHoldingObject = false;
+    private PlayerTool  toolHiddenForHold = null;
 
     void Start()
     {
@@ -102,8 +110,30 @@ public class ToolHolder : MonoBehaviour
 
     void Update()
     {
-        if (tools == null || isTransitioning) return;
+        if (tools == null) return;
 
+        // ── Отслеживание физического подбора предмета ─────────────────────────
+        bool isHolding = playerInteraction != null && playerInteraction.IsHoldingObject;
+
+        if (isHolding && !wasHoldingObject)
+        {
+            // Начали держать предмет — убрать текущий инструмент
+            toolHiddenForHold = GetEquippedTool();
+            toolHiddenForHold?.Unequip();
+            wasHoldingObject = true;
+        }
+        else if (!isHolding && wasHoldingObject)
+        {
+            // Отпустили / бросили предмет — вернуть инструмент
+            toolHiddenForHold?.Equip();
+            toolHiddenForHold = null;
+            wasHoldingObject = false;
+        }
+
+        // Пока держим предмет или идёт анимация свапа — никакого ввода
+        if (isHolding || isTransitioning) return;
+
+        // ── Клавиши доставания инструментов ──────────────────────────────
         // Найти уже достанный инструмент
         PlayerTool equipped = null;
         foreach (var t in tools)
