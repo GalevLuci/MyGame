@@ -75,10 +75,18 @@ public class ToolHolder : MonoBehaviour
         tools = GetComponentsInChildren<PlayerTool>(includeInactive: true);
         foreach (var tool in tools)
         {
-            tool.Initialize(playerController);
+            tool.Initialize(playerController, this);
             tool.ActionKey    = actionKey;
             tool.onEquipSound = () => AudioManager.Instance?.PlaySFX(equipSound);
         }
+    }
+
+    /// <summary>Возвращает true если хоть один инструмент кроме <paramref name="except"/> сейчас достан.</summary>
+    public bool AnyOtherEquipped(PlayerTool except)
+    {
+        foreach (var t in tools)
+            if (t != except && t.IsEquipped) return true;
+        return false;
     }
 
     void Update()
@@ -99,16 +107,13 @@ public class ToolHolder : MonoBehaviour
         if (playerController == null) return;
 
         // ── 1. Компенсация pitch камеры ──────────────────────────────────────
-        if (counteractCameraPitch)
-        {
-            // Инвертируем локальный поворот камеры (pitch) так,
-            // чтобы инструменты оставались горизонтальными при взгляде вверх/вниз
-            transform.localRotation = Quaternion.Inverse(playerController.cameraTransform.localRotation);
-        }
-        else
-        {
-            transform.localRotation = Quaternion.identity;
-        }
+        // Компенсация pitch камеры: применяем к повороту И позиции,
+        // чтобы инструменты не двигались при взгляде вверх/вниз
+        Quaternion pitchComp = counteractCameraPitch
+            ? Quaternion.Inverse(playerController.cameraTransform.localRotation)
+            : Quaternion.identity;
+
+        transform.localRotation = pitchComp;
 
         // ── 2. Покачивание при ходьбе ─────────────────────────────────────────
         if (enableWalkBob)
@@ -133,6 +138,8 @@ public class ToolHolder : MonoBehaviour
             currentBobOffset = Vector3.zero;
         }
 
-        transform.localPosition = baseLocalPos + currentBobOffset;
+        // Применяем ту же компенсацию к позиции: смещение будет в пространстве игрока (yaw),
+        // а не в пространстве камеры (pitch+yaw)
+        transform.localPosition = pitchComp * (baseLocalPos + currentBobOffset);
     }
 }

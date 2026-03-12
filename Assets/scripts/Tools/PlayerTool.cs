@@ -26,6 +26,7 @@ public abstract class PlayerTool : MonoBehaviour
     [SerializeField] private Vector3 hideRotationOffset = new Vector3(90f, 0f, 0f);
 
     protected PlayerController player;
+    private   ToolHolder        toolHolder;
     public bool IsEquipped { get; private set; }
     public bool IsOwned    { get; private set; }
     /// <summary>Клавиша экипировки — читается и задаётся из SettingsMenu.</summary>
@@ -42,9 +43,10 @@ public abstract class PlayerTool : MonoBehaviour
     private Coroutine  animCoroutine;
 
     /// <summary>Вызывается ToolHolder'ом при старте.</summary>
-    public virtual void Initialize(PlayerController playerController)
+    public virtual void Initialize(PlayerController playerController, ToolHolder holder = null)
     {
-        player = playerController;
+        player     = playerController;
+        toolHolder = holder;
         equippedLocalPos = transform.localPosition;
         equippedLocalRot = transform.localRotation;
         hiddenLocalRot   = equippedLocalRot * Quaternion.Euler(hideRotationOffset);
@@ -69,6 +71,8 @@ public abstract class PlayerTool : MonoBehaviour
 
     public void Equip()
     {
+        // Нельзя достать если другой инструмент уже в руках
+        if (toolHolder != null && toolHolder.AnyOtherEquipped(this)) return;
         if (animCoroutine != null) StopCoroutine(animCoroutine);
         IsEquipped = true;
         gameObject.SetActive(true);
