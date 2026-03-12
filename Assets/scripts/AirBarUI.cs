@@ -1,26 +1,32 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
-/// Полоска воздуха на HUD.
-/// CanvasGroup добавляется на barRoot автоматически — вручную добавлять не нужно.
+/// Шкала воздуха на HUD — набор отдельных объектов (сегментов).
+/// Добавьте любые GameObject в массив Segments в Inspector.
+/// Сегменты включаются/выключаются слева направо по мере изменения воздуха.
 ///
-/// Поведение:
-///  - Шкала полная (воздух 100%) → полупрозрачная
-///  - Не меняется 10 секунд    → скрывается
-///  - Меняется снова            → появляется полностью непрозрачной
+/// Поведение прозрачности (CanvasGroup на barRoot добавляется автоматически):
+///  - Воздух меняется или игрок в дыму → полностью виден
+///  - Шкала полная, не меняется        → полупрозрачная (idleAlpha)
+///  - Не меняется idleHideDelay секунд → скрывается
+///  - Изменяется снова                 → появляется с fade-in
 /// </summary>
 public class AirBarUI : MonoBehaviour
 {
-    [Header("UI элементы")]
-    [SerializeField] private GameObject    barRoot;
-    [SerializeField] private RectTransform fillRect;
+    [Header("Сегменты")]
+    [Tooltip("Объекты-сегменты в порядке от первого до последнего. " +
+             "Первый активируется первым, последний — при полном воздухе.")]
+    [SerializeField] private GameObject[] segments;
 
     [Header("Ссылки")]
-    [SerializeField] private PlayerAir playerAir;
+    [SerializeField] private PlayerAir  playerAir;
+
+    [Header("Контейнер (для прозрачности)")]
+    [Tooltip("Родительский объект всех сегментов. CanvasGroup добавляется автоматически.")]
+    [SerializeField] private GameObject barRoot;
 
     [Header("Прозрачность")]
-    [Tooltip("Прозрачность когда шкала полная и не меняется (0=невидима, 1=непрозрачна).")]
+    [Tooltip("Прозрачность когда шкала полная и не меняется (0 = невидима, 1 = непрозрачна).")]
     [SerializeField] private float idleAlpha      = 0.3f;
 
     [Tooltip("Скорость плавного изменения прозрачности.")]
@@ -30,16 +36,16 @@ public class AirBarUI : MonoBehaviour
     [Tooltip("Через сколько секунд без изменений полностью скрыть шкалу.")]
     [SerializeField] private float idleHideDelay  = 10f;
 
-    [Tooltip("Скорость плавного изменения заливки.")]
-    [SerializeField] private float fillSmoothSpeed = 8f;
+    // ── приватное состояние ───────────────────────────────────────────────────
 
     private CanvasGroup canvasGroup;
-    private float currentFill   = 1f;
-    private float currentAlpha  = 0f;
-    private float targetAlpha   = 0f;
+    private float currentAlpha    = 0f;
+    private float targetAlpha     = 0f;
     private float timeSinceChange = 0f;
     private float lastNormalized  = 1f;
     private bool  isVisible       = false;
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     void Start()
     {
@@ -49,7 +55,6 @@ public class AirBarUI : MonoBehaviour
             return;
         }
 
-        // Авто-добавляем CanvasGroup если нет
         if (barRoot != null)
         {
             canvasGroup = barRoot.GetComponent<CanvasGroup>();
@@ -57,8 +62,7 @@ public class AirBarUI : MonoBehaviour
         }
 
         lastNormalized = playerAir.AirNormalized;
-        currentFill    = lastNormalized;
-        ApplyFill(currentFill);
+        ApplySegments(lastNormalized);
         SetVisible(false);
     }
 
@@ -69,14 +73,12 @@ public class AirBarUI : MonoBehaviour
         float normalized = playerAir.AirNormalized;
         bool  airChanged = Mathf.Abs(normalized - lastNormalized) > 0.001f;
 
-        // ── Плавная заливка ───────────────────────────────────────────────────
-        currentFill = Mathf.MoveTowards(currentFill, normalized, fillSmoothSpeed * Time.deltaTime);
-        ApplyFill(currentFill);
+        // ── Включаем / выключаем сегменты ────────────────────────────────────
+        ApplySegments(normalized);
 
         // ── Логика видимости и прозрачности ──────────────────────────────────
         if (airChanged || playerAir.IsInSmoke)
         {
-            // Воздух меняется или игрок в дыму — показать полностью
             lastNormalized  = normalized;
             timeSinceChange = 0f;
             SetVisible(true);
@@ -88,13 +90,13 @@ public class AirBarUI : MonoBehaviour
 
             if (normalized >= 0.9999f)
             {
-                // Шкала полная и стоит → полупрозрачная
+                // Шкала полная — делаем полупрозрачной
                 targetAlpha = idleAlpha;
             }
 
             if (timeSinceChange >= idleHideDelay)
             {
-                // Не менялась 10 секунд → скрыть
+                // Не менялась достаточно долго — скрываем
                 SetVisible(false);
             }
         }
@@ -104,20 +106,30 @@ public class AirBarUI : MonoBehaviour
         if (canvasGroup != null) canvasGroup.alpha = currentAlpha;
     }
 
-    void ApplyFill(float t)
+    // ── Вспомогательные методы ────────────────────────────────────────────────
+
+    /// <summary>Включает первые N сегментов и выключает остальные.</summary>
+    void ApplySegments(float normalized)
     {
-        if (fillRect == null) return;
-        fillRect.localScale = new Vector3(Mathf.Clamp01(t), 1f, 1f);
+        if (segments == null || segments.Length == 0) return;
+
+        int activeCount = Mathf.RoundToInt(normalized * segments.Length);
+        for (int i = 0; i < segments.Length; i++)
+        {
+            if (segments[i] != null)
+                segments[i].SetActive(i < activeCount);
+        }
     }
 
     void SetVisible(bool value)
     {
         if (isVisible == value) return;
         isVisible = value;
+
         if (value)
         {
             barRoot?.SetActive(true);
-            currentAlpha = 0f; // начинаем fade-in с нуля
+            currentAlpha = 0f;   // начинаем fade-in с нуля
             targetAlpha  = 1f;
         }
         else
