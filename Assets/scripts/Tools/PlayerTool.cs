@@ -15,6 +15,10 @@ public abstract class PlayerTool : MonoBehaviour
     [Header("Клавиша экипировки")]
     [SerializeField] private Key equipKey = Key.Digit1;
 
+    [Header("Звуки")]
+    [Tooltip("Звук при достании инструмента.")]
+    [SerializeField] private AudioClip equipSound;
+
     [Header("Анимация достать/убрать")]
     [Tooltip("Время анимации (секунды)")]
     [SerializeField] private float equipAnimDuration = 0.25f;
@@ -68,9 +72,10 @@ public abstract class PlayerTool : MonoBehaviour
         IsEquipped = true;
         gameObject.SetActive(true);
         // Начинаем из спрятанной позиции + повёрнутым
-        transform.localPosition = equippedLocalPos + hideOffset;
+        transform.localPosition = GetHiddenLocalPos();
         transform.localRotation = hiddenLocalRot;
         animCoroutine = StartCoroutine(SlideTo(equippedLocalPos, equippedLocalRot));
+        AudioManager.Instance?.PlaySFX(equipSound);
         OnEquipped();
     }
 
@@ -80,7 +85,7 @@ public abstract class PlayerTool : MonoBehaviour
         IsEquipped = false;
         OnUnequipped();
         animCoroutine = StartCoroutine(SlideToThenDisable(
-            equippedLocalPos + hideOffset, hiddenLocalRot));
+            GetHiddenLocalPos(), hiddenLocalRot));
     }
 
     /// <summary>Переопредели для логики при достании.</summary>
@@ -88,6 +93,28 @@ public abstract class PlayerTool : MonoBehaviour
 
     /// <summary>Переопредели для логики при уборке (до начала анимации).</summary>
     protected virtual void OnUnequipped() { }
+
+    // ──────────────── Спрятанная позиция ────────────────
+
+    /// <summary>
+    /// Считает спрятанную локальную позицию применяя hideOffset в горизонтальном
+    /// пространстве игрока (без питча камеры), чтобы анимация не искажалась
+    /// при взгляде вниз/вверх.
+    /// </summary>
+    private Vector3 GetHiddenLocalPos()
+    {
+        if (player == null || transform.parent == null)
+            return equippedLocalPos + hideOffset;
+
+        // Мировая позиция экипированной точки
+        Vector3 worldEquipped = transform.parent.TransformPoint(equippedLocalPos);
+
+        // Применяем offset только по горизонтальному направлению игрока (yaw без pitch)
+        Quaternion playerYaw = Quaternion.Euler(0f, player.transform.eulerAngles.y, 0f);
+        Vector3 worldHidden  = worldEquipped + playerYaw * hideOffset;
+
+        return transform.parent.InverseTransformPoint(worldHidden);
+    }
 
     // ──────────────── Анимация ────────────────
 

@@ -13,6 +13,9 @@ public class FishingRodTool : PlayerTool
     [SerializeField] private float arrivalDistance  = 1f;
     [SerializeField] private float groundedCooldown = 1f;
 
+    [Header("Звуки")]
+    [SerializeField] private AudioClip shootSound;
+
     [Header("Верёвка (визуал)")]
     [SerializeField] private int   ropeSegments            = 24;
     [SerializeField] private float ropeWidth               = 0.015f;
@@ -118,7 +121,14 @@ public class FishingRodTool : PlayerTool
         hookScript.maxLength  = ropeLength;
         hookScript.startPoint = startPoint;
 
-        hookRb.linearVelocity = player.cameraTransform.forward * hookSpeed;
+        // Направление — горизонтально или вверх, но НЕ вниз
+        Vector3 shootDir = player.cameraTransform.forward;
+        shootDir.y = Mathf.Max(shootDir.y, 0f);
+        if (shootDir.sqrMagnitude < 0.001f) shootDir = player.transform.forward;
+        shootDir.Normalize();
+
+        hookRb.linearVelocity = shootDir * hookSpeed;
+        AudioManager.Instance?.PlaySFX(shootSound);
 
         InitRopePoints();
         lineRenderer.enabled = true;
