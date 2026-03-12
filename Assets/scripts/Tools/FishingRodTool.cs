@@ -15,7 +15,7 @@ public class FishingRodTool : PlayerTool
     [SerializeField] private float minHookHeight    = 1.5f;     // мин. высота крюка над игроком чтобы не считалось волочением
 
     [Header("Качание (маятник)")]
-    [SerializeField] private float swingInputForce  = 6f;       // сила управления при качании
+    [SerializeField] private float swingInputForce  = 3f;       // сила управления при качании
     [SerializeField] private float swingLaunchMult  = 1f;       // множитель инерции при отпускании
 
     [Header("Звуки")]
@@ -128,11 +128,8 @@ public class FishingRodTool : PlayerTool
         hookScript.maxLength  = ropeLength;
         hookScript.startPoint = startPoint;
 
-        // Направление — горизонтально или вверх, но НЕ вниз
-        Vector3 shootDir = player.cameraTransform.forward;
-        shootDir.y = Mathf.Max(shootDir.y, 0f);
-        if (shootDir.sqrMagnitude < 0.001f) shootDir = player.transform.forward;
-        shootDir.Normalize();
+        // Направление камеры без ограничений — можно целиться вниз
+        Vector3 shootDir = player.cameraTransform.forward.normalized;
 
         hookRb.linearVelocity = shootDir * hookSpeed;
         AudioManager.Instance?.PlaySFX(shootSound);
@@ -166,9 +163,8 @@ public class FishingRodTool : PlayerTool
 
         if (player.IsGrounded)
         {
-            // Если крюк недостаточно высоко — игрок тащится по полу → отпустить
-            float heightAbovePlayer = hookLandedPos.y - player.transform.position.y;
-            if (heightAbovePlayer < minHookHeight)
+            // Если крюк на уровне ног или ниже — игрок тащится по полу → отпустить
+            if (hookLandedPos.y <= player.FeetY + minHookHeight)
             {
                 Retract();
                 cooldownTimer = groundedCooldown;
@@ -291,8 +287,10 @@ public class FishingRodTool : PlayerTool
             ? hookObject.transform.position
             : hookLandedPos;
 
-        float segLen = ropeLength / (ropeSegments - 1);
-        float dt     = Time.deltaTime;
+        // Длина сегмента — по реальному расстоянию до крюка, не по максимуму
+        float actualLen = Vector3.Distance(startPoint.position, endPos);
+        float segLen    = Mathf.Max(actualLen, 0.01f) / (ropeSegments - 1);
+        float dt        = Time.deltaTime;
 
         for (int i = 1; i < ropeSegments - 1; i++)
         {

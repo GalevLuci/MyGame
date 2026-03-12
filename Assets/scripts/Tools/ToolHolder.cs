@@ -13,6 +13,10 @@ public class ToolHolder : MonoBehaviour
              "чтобы инструменты не наклонялись вместе с камерой.")]
     [SerializeField] private bool counteractCameraPitch = true;
 
+    [Header("Звуки")]
+    [Tooltip("Звук при достании любого инструмента.")]
+    [SerializeField] private AudioClip equipSound;
+
     [Header("Клавиша действия (одна на все инструменты)")]
     [Tooltip("Клавиша действия — одна для всех инструментов (открыть зонт, применить предмет и т.д.).\n" +
              "Задаётся здесь и автоматически передаётся каждому инструменту.")]
@@ -72,15 +76,22 @@ public class ToolHolder : MonoBehaviour
         foreach (var tool in tools)
         {
             tool.Initialize(playerController);
-            tool.ActionKey = actionKey;
+            tool.ActionKey    = actionKey;
+            tool.onEquipSound = () => AudioManager.Instance?.PlaySFX(equipSound);
         }
     }
 
     void Update()
     {
         if (tools == null) return;
+
+        // Если хоть один инструмент достан — нельзя достать другой
+        bool anyEquipped = false;
         foreach (var tool in tools)
-            tool.HandleEquipInput();
+            if (tool.IsEquipped) { anyEquipped = true; break; }
+
+        foreach (var tool in tools)
+            tool.HandleEquipInput(blockEquip: anyEquipped && !tool.IsEquipped);
     }
 
     void LateUpdate()

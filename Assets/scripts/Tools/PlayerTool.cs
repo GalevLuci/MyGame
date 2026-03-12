@@ -15,10 +15,6 @@ public abstract class PlayerTool : MonoBehaviour
     [Header("Клавиша экипировки")]
     [SerializeField] private Key equipKey = Key.Digit1;
 
-    [Header("Звуки")]
-    [Tooltip("Звук при достании инструмента.")]
-    [SerializeField] private AudioClip equipSound;
-
     [Header("Анимация достать/убрать")]
     [Tooltip("Время анимации (секунды)")]
     [SerializeField] private float equipAnimDuration = 0.25f;
@@ -56,12 +52,17 @@ public abstract class PlayerTool : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    /// <summary>Звук достания — задаётся ToolHolder'ом (один звук на все инструменты).</summary>
+    public System.Action onEquipSound;
+
     /// <summary>Вызывается ToolHolder'ом каждый кадр (даже когда GameObject выключен).</summary>
-    public void HandleEquipInput()
+    /// <param name="blockEquip">Запретить достать, если уже достан другой инструмент.</param>
+    public void HandleEquipInput(bool blockEquip = false)
     {
         if (!IsOwned) return;
-        if (Keyboard.current[equipKey].wasPressedThisFrame)
-            Toggle();
+        if (!Keyboard.current[equipKey].wasPressedThisFrame) return;
+        if (IsEquipped) Unequip();
+        else if (!blockEquip) Equip();
     }
 
     public void Toggle() { if (IsEquipped) Unequip(); else Equip(); }
@@ -75,7 +76,7 @@ public abstract class PlayerTool : MonoBehaviour
         transform.localPosition = GetHiddenLocalPos();
         transform.localRotation = hiddenLocalRot;
         animCoroutine = StartCoroutine(SlideTo(equippedLocalPos, equippedLocalRot));
-        AudioManager.Instance?.PlaySFX(equipSound);
+        onEquipSound?.Invoke();
         OnEquipped();
     }
 
