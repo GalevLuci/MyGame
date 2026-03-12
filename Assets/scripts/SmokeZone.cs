@@ -12,18 +12,24 @@ public class SmokeZone : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag(playerTag)) return;
-        var air = other.GetComponentInChildren<PlayerAir>();
-        if (air == null) air = other.GetComponentInParent<PlayerAir>();
+        var air = FindPlayerAir(other);
         air?.SetInSmoke(true);
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (!other.CompareTag(playerTag)) return;
-        var air = other.GetComponentInChildren<PlayerAir>();
-        if (air == null) air = other.GetComponentInParent<PlayerAir>();
+        var air = FindPlayerAir(other);
         air?.SetInSmoke(false);
+    }
+
+    PlayerAir FindPlayerAir(Collider other)
+    {
+        if (!other.CompareTag(playerTag)) return null;
+        // Ищем на объекте, в детях и в родителях — на случай разных иерархий
+        var air = other.GetComponent<PlayerAir>();
+        if (air == null) air = other.GetComponentInParent<PlayerAir>();
+        if (air == null) air = other.GetComponentInChildren<PlayerAir>();
+        return air;
     }
 
 #if UNITY_EDITOR

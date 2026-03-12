@@ -52,6 +52,10 @@ public class PlayerAir : MonoBehaviour
         {
             currentAir = Mathf.Max(0f, currentAir - depletionRate * Time.deltaTime);
             OnAirChanged?.Invoke(AirNormalized);
+
+            // Стрельнуть ещё раз если только что достигли 0
+            if (currentAir <= 0f)
+                OnAirChanged?.Invoke(0f);
         }
         else
         {
