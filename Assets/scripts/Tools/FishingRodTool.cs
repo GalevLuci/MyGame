@@ -9,20 +9,25 @@ public class FishingRodTool : PlayerTool
     [SerializeField] private Transform startPoint;
     [SerializeField] private float ropeLength       = 10f;
     [SerializeField] private float hookSpeed        = 25f;
-    [SerializeField] private float pullSpeed        = 14f;
+    [SerializeField] private float pullSpeed        = 14f;      // скорость притяжения с земли
     [SerializeField] private float arrivalDistance  = 1f;
     [SerializeField] private float groundedCooldown = 1f;
+    [SerializeField] private float minHookHeight    = 1.5f;     // мин. высота крюка над игроком чтобы не считалось волочением
+
+    [Header("Качание (маятник)")]
+    [SerializeField] private float swingInputForce  = 6f;       // сила управления при качании
+    [SerializeField] private float swingLaunchMult  = 1f;       // множитель инерции при отпускании
 
     [Header("Звуки")]
     [SerializeField] private AudioClip shootSound;
 
     [Header("Верёвка (визуал)")]
-    [SerializeField] private int   ropeSegments            = 24;
-    [SerializeField] private float ropeWidth               = 0.015f;
-    [SerializeField] private float ropeGravityScale        = 0.4f;
-    [SerializeField] private int   ropeConstraintIter      = 12;
+    [SerializeField] private int   ropeSegments       = 24;
+    [SerializeField] private float ropeWidth          = 0.015f;
+    [SerializeField] private float ropeGravityScale   = 0.4f;
+    [SerializeField] private int   ropeConstraintIter = 12;
 
-    // ── Внутренние ────────────────────────────────────────────────────────────
+    // ── Состояние ─────────────────────────────────────────────────────────────
     private LineRenderer lineRenderer;
     private GameObject   hookObject;
     private Rigidbody    hookRb;
@@ -31,24 +36,31 @@ public class FishingRodTool : PlayerTool
     private enum RopeState { Idle, Flying, Attached }
     private RopeState state = RopeState.Idle;
 
-    private Vector3    hookLandedPos;
-    private float      cooldownTimer;
+    private Vector3 hookLandedPos;
+    private float   cooldownTimer;
 
-    private Vector3[]  ropePoints;
-    private Vector3[]  ropePointsPrev;
+    // Маятник
+    private bool    isSwinging      = false;
+    private Vector3 swingVelocity;
+    private float   swingRopeLength;            // длина верёвки в момент зацепа
 
+    // Поворот удочки
     private Quaternion baseRodLocalRot;
     private Quaternion targetRodLocalRot;
+
+    // Верёвка
+    private Vector3[] ropePoints;
+    private Vector3[] ropePointsPrev;
 
     // ── Init ──────────────────────────────────────────────────────────────────
     void Awake()
     {
-        lineRenderer                = GetComponent<LineRenderer>();
-        lineRenderer.positionCount  = ropeSegments;
-        lineRenderer.startWidth     = ropeWidth;
-        lineRenderer.endWidth       = ropeWidth * 0.5f;
-        lineRenderer.useWorldSpace  = true;
-        lineRenderer.enabled        = false;
+        lineRenderer               = GetComponent<LineRenderer>();
+        lineRenderer.positionCount = ropeSegments;
+        lineRenderer.startWidth    = ropeWidth;
+        lineRenderer.endWidth      = ropeWidth * 0.5f;
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.enabled       = false;
     }
 
     protected override void OnEquipped()
@@ -65,11 +77,7 @@ public class FishingRodTool : PlayerTool
     {
         if (!IsEquipped || player == null) return;
 
-        if (cooldownTimer > 0f)
-        {
-            cooldownTimer -= Time.deltaTime;
-            return;
-        }
+        if (cooldownTimer > 0f) { cooldownTimer -= Time.deltaTime; return; }
 
         bool held    = Keyboard.current[ActionKey].isPressed;
         bool pressed = Keyboard.current[ActionKey].wasPressedThisFrame;
@@ -88,11 +96,10 @@ public class FishingRodTool : PlayerTool
                 break;
 
             case RopeState.Attached:
-                if (!held) { Retract(); break; }
-                // Плавно повернуть удочку к точке крюка
+                if (!held) { ReleaseWithMomentum(); break; }
                 transform.localRotation = Quaternion.Slerp(
                     transform.localRotation, targetRodLocalRot, Time.deltaTime * 8f);
-                PullPlayer();
+                UpdateAttached();
                 break;
         }
     }
@@ -111,10 +118,10 @@ public class FishingRodTool : PlayerTool
         hookObject.transform.position   = startPoint.position;
         hookObject.name                 = "FishingHook_Runtime";
 
-        hookRb                          = hookObject.AddComponent<Rigidbody>();
-        hookRb.useGravity               = true;
-        hookRb.interpolation            = RigidbodyInterpolation.Interpolate;
-        hookRb.collisionDetectionMode   = CollisionDetectionMode.Continuous;
+        hookRb                        = hookObject.AddComponent<Rigidbody>();
+        hookRb.useGravity             = true;
+        hookRb.interpolation          = RigidbodyInterpolation.Interpolate;
+        hookRb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
         hookScript            = hookObject.AddComponent<FishingHook>();
         hookScript.onLanded   = OnHookLanded;
@@ -137,42 +144,112 @@ public class FishingRodTool : PlayerTool
 
     void OnHookLanded(Vector3 pos)
     {
-        hookLandedPos = pos;
-        state         = RopeState.Attached;
+        hookLandedPos   = pos;
+        state           = RopeState.Attached;
+        isSwinging      = false;
+        swingRopeLength = Vector3.Distance(player.transform.position, pos);
 
-        // Считаем локальный поворот удочки в направлении крюка
+        // Поворот удочки к крюку
         Vector3 worldDir = (pos - startPoint.position).normalized;
         if (worldDir != Vector3.zero && transform.parent != null)
             targetRodLocalRot = Quaternion.Inverse(transform.parent.rotation)
                                 * Quaternion.LookRotation(worldDir);
     }
 
-    // ── Притяжение ────────────────────────────────────────────────────────────
-    void PullPlayer()
+    // ── Логика зацепления ─────────────────────────────────────────────────────
+    void UpdateAttached()
     {
-        Vector3 dir  = hookLandedPos - player.transform.position;
-        float   dist = dir.magnitude;
+        Vector3 toHook = hookLandedPos - player.transform.position;
+        float   dist   = toHook.magnitude;
 
         if (dist < arrivalDistance) { Retract(); return; }
 
-        dir.Normalize();
-
-        // Если тянет горизонтально и игрок на земле — он тащится по полу → отпустить
-        float upFactor = Vector3.Dot(dir, Vector3.up);
-        if (player.IsGrounded && upFactor < 0.3f)
+        if (player.IsGrounded)
         {
-            Retract();
-            cooldownTimer = groundedCooldown;
-            return;
+            // Если крюк недостаточно высоко — игрок тащится по полу → отпустить
+            float heightAbovePlayer = hookLandedPos.y - player.transform.position.y;
+            if (heightAbovePlayer < minHookHeight)
+            {
+                Retract();
+                cooldownTimer = groundedCooldown;
+                return;
+            }
+
+            // Крюк высоко → тянуть вверх с земли
+            isSwinging = false;
+            player.SetExternalVelocity(toHook.normalized * pullSpeed);
+        }
+        else
+        {
+            // В воздухе — маятник
+            if (!isSwinging)
+            {
+                // Первый кадр в воздухе: инициализируем скорость маятника
+                isSwinging      = true;
+                swingRopeLength = dist;
+                swingVelocity   = player.CurrentVelocity;
+            }
+
+            UpdateSwing(toHook, dist);
+        }
+    }
+
+    void UpdateSwing(Vector3 toHook, float dist)
+    {
+        Vector3 hookDir = toHook.normalized; // направление к крюку
+
+        // Гравитация
+        swingVelocity += Physics.gravity * Time.deltaTime;
+
+        // Ограничение верёвки: убираем компонент "от крюка" когда верёвка натянута
+        if (dist >= swingRopeLength * 0.98f)
+        {
+            float outward = Vector3.Dot(swingVelocity, -hookDir); // скорость прочь от крюка
+            if (outward > 0f)
+                swingVelocity += hookDir * outward;               // гасим расширение
         }
 
-        player.SetExternalVelocity(dir * pullSpeed);
+        // Управление WASD: добавляем силу перпендикулярно верёвке
+        Vector3 input = GetSwingInput();
+        if (input.sqrMagnitude > 0.01f)
+        {
+            // Убираем компоненту вдоль верёвки — только перпендикулярное качание
+            input -= Vector3.Dot(input, hookDir) * hookDir;
+            swingVelocity += input * swingInputForce * Time.deltaTime;
+        }
+
+        player.SetVelocityOverride(swingVelocity);
+    }
+
+    Vector3 GetSwingInput()
+    {
+        Vector2 inp = Vector2.zero;
+        if (Keyboard.current[player.keyForward].isPressed) inp.y += 1f;
+        if (Keyboard.current[player.keyBack].isPressed)    inp.y -= 1f;
+        if (Keyboard.current[player.keyLeft].isPressed)    inp.x -= 1f;
+        if (Keyboard.current[player.keyRight].isPressed)   inp.x += 1f;
+        return (player.transform.right * inp.x + player.transform.forward * inp.y);
+    }
+
+    // ── Отпустить с инерцией ──────────────────────────────────────────────────
+    void ReleaseWithMomentum()
+    {
+        if (isSwinging)
+        {
+            // Передаём вертикальную скорость маятника гравитационной системе игрока
+            player.SetYVelocity(swingVelocity.y * swingLaunchMult);
+            // Горизонтальный импульс — один кадр внешней скорости
+            Vector3 horizontal = new Vector3(swingVelocity.x, 0f, swingVelocity.z);
+            player.SetExternalVelocity(horizontal * swingLaunchMult);
+        }
+        Retract();
     }
 
     // ── Убрать крюк ───────────────────────────────────────────────────────────
     void Retract()
     {
         state                = RopeState.Idle;
+        isSwinging           = false;
         lineRenderer.enabled = false;
 
         if (hookObject != null) { Destroy(hookObject); hookObject = null; }
@@ -217,7 +294,6 @@ public class FishingRodTool : PlayerTool
         float segLen = ropeLength / (ropeSegments - 1);
         float dt     = Time.deltaTime;
 
-        // Verlet — применяем гравитацию к внутренним точкам
         for (int i = 1; i < ropeSegments - 1; i++)
         {
             Vector3 vel      = ropePoints[i] - ropePointsPrev[i];
@@ -225,7 +301,6 @@ public class FishingRodTool : PlayerTool
             ropePoints[i]    += vel + Physics.gravity * ropeGravityScale * dt * dt;
         }
 
-        // Ограничения длины сегментов
         for (int iter = 0; iter < ropeConstraintIter; iter++)
         {
             ropePoints[0]                = startPoint.position;

@@ -37,7 +37,12 @@ public class PlayerController : MonoBehaviour
     // Мировой Y нижней точки капсулы (уровень ног)
     public float FeetY             => transform.position.y + controller.center.y - controller.height / 2f;
     public void MultiplyVerticalVelocity(float multiplier) => velocity.y *= multiplier;
-    public void SetExternalVelocity(Vector3 v) => externalVelocity = v;
+    public void SetExternalVelocity(Vector3 v)  => externalVelocity = v;
+    /// <summary>Полностью заменяет движение игрока на один кадр (для маятника).</summary>
+    public void SetVelocityOverride(Vector3 v)  { velocityOverride = v; hasVelocityOverride = true; }
+    /// <summary>Сбрасывает накопленную вертикальную скорость (например при отпускании верёвки).</summary>
+    public void SetYVelocity(float y)            => velocity.y = y;
+    public Vector3 CurrentVelocity               => velocity;
 
     private CharacterController controller;
     private Vector3 velocity;
@@ -45,7 +50,9 @@ public class PlayerController : MonoBehaviour
     private float xRotation = 0f;
     private float yRotation = 0f;
 
-    private Vector3 externalVelocity = Vector3.zero;
+    private Vector3 externalVelocity    = Vector3.zero;
+    private Vector3 velocityOverride    = Vector3.zero;
+    private bool    hasVelocityOverride = false;
     private float bobTimer = 0f;
     private Vector3 currentBobOffset = Vector3.zero;
     private Vector3 targetBobOffset = Vector3.zero;
@@ -89,6 +96,15 @@ public class PlayerController : MonoBehaviour
         isGrounded = controller.isGrounded;
         if (isGrounded && velocity.y < 0)
             velocity.y = -2f;
+
+        // Override: полный контроль движения (маятник, верёвка и т.п.)
+        if (hasVelocityOverride)
+        {
+            controller.Move(velocityOverride * Time.deltaTime);
+            hasVelocityOverride = false;
+            isMoving = false;
+            return;
+        }
 
         Vector2 moveInput = Vector2.zero;
         if (Keyboard.current[keyForward].isPressed) moveInput.y += 1f;
