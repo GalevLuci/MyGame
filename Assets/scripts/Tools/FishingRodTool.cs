@@ -22,6 +22,9 @@ public class FishingRodTool : PlayerTool
     [SerializeField] private AudioClip shootSound;
 
     [Header("Верёвка (визуал)")]
+    [Tooltip("Материал верёвки. Если пусто — создаётся автоматически чёрный.")]
+    [SerializeField] private Material ropeMaterial;
+    [SerializeField] private Color    ropeColor        = new Color(0.15f, 0.1f, 0.05f);
     [SerializeField] private int   ropeSegments       = 24;
     [SerializeField] private float ropeWidth          = 0.015f;
     [SerializeField] private float ropeGravityScale   = 0.4f;
@@ -61,6 +64,23 @@ public class FishingRodTool : PlayerTool
         lineRenderer.endWidth      = ropeWidth * 0.5f;
         lineRenderer.useWorldSpace = true;
         lineRenderer.enabled       = false;
+
+        // Материал: используем назначенный или создаём URP-совместимый автоматически
+        if (ropeMaterial != null)
+        {
+            lineRenderer.material = ropeMaterial;
+        }
+        else
+        {
+            Shader sh = Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Unlit/Color");
+            if (sh != null)
+            {
+                var mat   = new Material(sh);
+                mat.color = ropeColor;
+                lineRenderer.material = mat;
+            }
+        }
     }
 
     protected override void OnEquipped()
